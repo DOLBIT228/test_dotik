@@ -5,6 +5,15 @@ from datetime import datetime
 from io import BytesIO
 
 # =====================================================
+# PAGE CONFIG
+# =====================================================
+
+st.set_page_config(
+    page_title="CRM Analytics",
+    layout="wide"
+)
+
+# =====================================================
 # SECRETS
 # =====================================================
 
@@ -12,6 +21,8 @@ WEBHOOK = st.secrets["WEBHOOK"]
 
 APP_LOGIN = st.secrets["APP_LOGIN"]
 APP_PASSWORD = st.secrets["APP_PASSWORD"]
+
+MANAGERS = dict(st.secrets["MANAGERS"])
 
 # =====================================================
 # AUTH
@@ -44,18 +55,13 @@ if not st.session_state.authenticated:
     st.stop()
 
 # =====================================================
-# PAGE
+# TITLE
 # =====================================================
-
-st.set_page_config(
-    page_title="CRM Analytics",
-    layout="wide"
-)
 
 st.title("Аналітика спроб дзвінків")
 
 # =====================================================
-# STATUS
+# STATUSES
 # =====================================================
 
 STATUSES = {
@@ -259,9 +265,19 @@ if st.button("Запустити аналіз"):
         for deal in deals:
 
             deal_id = deal.get("ID")
+
             title = deal.get("TITLE")
-            manager_id = deal.get("ASSIGNED_BY_ID")
+
             created_date = deal.get("DATE_CREATE")
+
+            manager_id = str(
+                deal.get("ASSIGNED_BY_ID")
+            )
+
+            manager_name = MANAGERS.get(
+                manager_id,
+                f"ID {manager_id}"
+            )
 
             activities = bx_api(
                 "crm.activity.list",
@@ -326,7 +342,7 @@ if st.button("Запустити аналіз"):
                 "ID угоди": deal_id,
                 "Назва": title,
                 "Дата створення": created_date,
-                "Менеджер": manager_id,
+                "Менеджер": manager_name,
 
                 "Спроб дзвінка": calls_count,
 
@@ -342,15 +358,15 @@ if st.button("Запустити аналіз"):
             # MANAGERS
             # =========================================
 
-            if manager_id not in manager_stats:
+            if manager_name not in manager_stats:
 
-                manager_stats[manager_id] = {
+                manager_stats[manager_name] = {
                     "deals": 0,
                     "calls": 0
                 }
 
-            manager_stats[manager_id]["deals"] += 1
-            manager_stats[manager_id]["calls"] += calls_count
+            manager_stats[manager_name]["deals"] += 1
+            manager_stats[manager_name]["calls"] += calls_count
 
         avg_calls = 0
 
@@ -380,10 +396,10 @@ if st.button("Запустити аналіз"):
         )
 
     # =================================================
-    # MANAGERS
+    # MANAGERS SUMMARY
     # =================================================
 
-    for manager_id, stats in manager_stats.items():
+    for manager_name, stats in manager_stats.items():
 
         avg_calls = 0
 
@@ -396,7 +412,7 @@ if st.button("Запустити аналіз"):
 
         managers_rows.append({
 
-            "Менеджер": manager_id,
+            "Менеджер": manager_name,
 
             "Угод": stats["deals"],
 
@@ -416,24 +432,27 @@ if st.button("Запустити аналіз"):
     managers_df = pd.DataFrame(managers_rows)
 
     # =================================================
-    # STREAMLIT TABLES
+    # TABLES
     # =================================================
 
     st.success("Аналіз завершено")
 
     st.subheader("Загальна статистика")
+
     st.dataframe(
         summary_df,
         use_container_width=True
     )
 
     st.subheader("Детально по угодах")
+
     st.dataframe(
         deals_df,
         use_container_width=True
     )
 
     st.subheader("Менеджери")
+
     st.dataframe(
         managers_df,
         use_container_width=True
