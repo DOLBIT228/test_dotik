@@ -474,5 +474,3 @@ if st.button("Запустити аналіз"):
         file_name="crm_analytics.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
-# тест 1234
